@@ -1,0 +1,52 @@
+# SKELETON KEY ATTACK
+
+O ataque Skeleton Key é um malware que pode ser injetado no processo LSASS em um controlador de domínio e cria uma senha mestra que sequestrará [sic] qualquer solicitação de autenticação no domínio e permite que invasores ignorem a autenticação do Active Directory injetando uma senha mestra no controlador de domínio. Isso permite que o invasor se autentique como qualquer usuário sem senha, concedendo-lhe efetivamente acesso irrestrito ao domínio.
+A execução do ataque requer um único comando: misc::skeleton.
+
+Depois que o Mimikatz for instalado em um controlador de domínio e executado com privilégios de administrador de domínio, o seguinte comando simples pode ser usado para executar o exploit.
+
+Privilege::debug ( certifique-se que "'20' OK" foi retornado)
+misc::skeleton
+
+# CONTRAMEDIDAS
+
+A - Habilite o modo de auditoria para Lsass.exe (Single System)
+. Edite o registro para o seguinte:
+. HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\LSASS.exe.
+. Configure o valor da chave de registro como AuditLevel=dword:00000008.
+. Reinicie o sistema
+
+B - Habilite o modo de auditoria para Lsass.exe (Group Policy)
+. Expanda Configuração do Computador , expanda Preferências e, em seguida, expanda Configurações do Windows .
+. Clique com o botão direito em Registro , aponte para Novo e clique em Item de registro . A caixa de diálogo Novas propriedades do registro é exibida.
+. Na lista Hive , clique em HKEY_LOCAL_MACHINE.
+. Na lista Caminho-chave , navegue até SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\LSASS.exe .
+. Na caixa Nome do valor , digite AuditLevel .
+. Na caixa Tipo de valor , clique para selecionar REG_DWORD .
+. Na caixa Dados do valor , digite 00000008 .
+. Clique OK .
+
+Para que o GPO entre em vigor, a alteração do GPO deve ser replicada para todos os controladores de domínio.
+Depois disso, você poderá ver estes eventos no Visualizador de Eventos: Microsoft-Windows-Codeintegrity/Operational:
+
+Evento 3033 : Este evento registra que uma verificação de integridade de código determinou que um processo (geralmente lsass.exe) tentou carregar um driver que não atendeu aos requisitos de nível de assinatura da Microsoft.
+Evento 3063 : Este evento registra que uma verificação de integridade de código determinou que um processo (geralmente lsass.exe) tentou carregar um driver que não atendia aos requisitos de segurança para Seções Compartilhadas.
+
+C - Habilite a Proteção LSA
+O LSASS pode ser executado em modo protegido, o que pode ajudar a evitar esse tipo de ataque. Habilitar o modo protegido garante que quaisquer alterações no processo LSASS devem ser assinadas por uma assinatura verificada da Microsoft. Uma ressalva a isso é que se o malware for capaz de carregar no kernel, a proteção será anulada.
+Execute as seguintes alterações no registro para habilitar a proteção LSA:
+. HKLM\SYSTEM\CurrentControlSet\Control\Lsa.
+. Defina o valor da chave do registro como: "RunAsPPL"=dword:00000001.
+. Reinicie o computador.
+
+Para verificar se a Proteção LSA está habilitada, podemos verificar o ID do Evento 12 do Wininit nos logs do Sistema no Visualizador de Eventos.
+
+D - Habilite Autenticação multifator
+Os ataques de chave mestra usam autenticação única na rede para o estágio pós-exploração. Implementações multifatoriais, como autenticação de cartão inteligente, MFA/2FA podem ajudar a mitigar esse ataque.
+
+
+
+# LEITURA AUXILIAR
+https://viperone.gitbook.io/pentest-everything/everything/everything-active-directory/persistence/skeleton-key-attack
+https://attack.mitre.org/software/S0007/
+https://blog.netwrix.com/2022/11/29/skeleton-key-attack-active-directory/
